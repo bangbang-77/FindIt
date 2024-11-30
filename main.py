@@ -35,11 +35,11 @@ class StartPage:
                 return self.button.is_clicked(event.pos)
         return False
 
-#游戏功能实现
 class Item:
     def __init__(self, name, images):
         self.name = name
         self.images = images
+
 class GameGrid:
     def __init__(self, screen, images, grid_size, cell_width, cell_height, horizontal_padding=10, vertical_padding=10):
         self.screen = screen
@@ -70,12 +70,11 @@ class GameGrid:
                 if image:
                     image_rect = image.get_rect(
                         topleft=(
-                            col * (self.cell_width + self.horizontal_padding) - self.offset_x +25,
-                            row * (self.cell_height + self.vertical_padding) +60
+                            col * (self.cell_width + self.horizontal_padding) - self.offset_x + 25,
+                            row * (self.cell_height + self.vertical_padding) + 60
                         )
                     )
                     self.screen.blit(image, image_rect)
-
 
 class GameBackground:
     def __init__(self, screen, background_image):
@@ -120,8 +119,16 @@ class Popup:
         # 绘制游戏结束文本
         font = pygame.font.SysFont('simhei', 48)
         text_surface = font.render(text, True, (0, 0, 0))
-        text_rect = text_surface.get_rect(center=(width // 2, height // 2))
+        text_rect = text_surface.get_rect(center=(width // 2, height // 2 - 30))
         self.surface.blit(text_surface, text_rect)
+
+    def update_score(self, score):
+        # 绘制总积分
+        score_text = f"总积分: {score}"
+        score_font = pygame.font.SysFont('simhei', 36)
+        score_surface = score_font.render(score_text, True, (0, 0, 0))
+        score_rect = score_surface.get_rect(center=(self.width // 2, self.height // 2 + 30))
+        self.surface.blit(score_surface, score_rect)
 
     def draw(self):
         self.screen.blit(self.surface, self.rect)
@@ -167,13 +174,14 @@ class Game:
         self.popup = Popup(self.screen, 300, 200, "游戏结束")
 
         # 初始化计时器
-        self.timer = Timer(120)  # 设置倒计时为120秒
+        self.timer = Timer(10)  # 设置倒计时为120秒
 
         # 初始化物品
-        self.images = self.load_images()
-
+        self.items = self.load_images()
+        # 创建一个所有图片的平铺列表
+        self.all_images = [image for item in self.items for image in item.images]
         # 初始化游戏网格
-        self.game_grid = GameGrid(self.screen, self.images, (4, 12), cell_width=130, cell_height=130,
+        self.game_grid = GameGrid(self.screen, self.all_images, (4, 12), cell_width=130, cell_height=130,
                                   horizontal_padding=40, vertical_padding=20)
 
         # 主循环控制变量
@@ -181,19 +189,85 @@ class Game:
         self.start_page_active = True
         self.game_over = False
 
+        # 初始化任务
+        self.current_task, self.current_task_count = self.generate_task()
+
+        # 初始化积分
+        self.score = 0
+
     def load_images(self):
         # 加载物品图片
         item_images = {
             '风筝': [pygame.image.load(f'img/test/fengzheng ({i}).png') for i in range(1, 5)],
             '勺子': [pygame.image.load(f'img/test/shaozi ({i}).png') for i in range(1, 38)],
             '筷子': [pygame.image.load(f'img/test/kuaizi ({i}).png') for i in range(1, 12)],
+            '花瓶': [pygame.image.load(f'img/test/huapin ({i}).png') for i in range(1, 15)],
             # 添加更多物品
         }
-        images = []
+        items = []
         for name, image_list in item_images.items():
             scaled_images = [pygame.transform.scale(image, (130, 130)) for image in image_list]
-            images.extend(scaled_images)
-        return random.sample(images, 48)  # 随机选择48张图片
+            item = Item(name, scaled_images)
+            items.append(item)
+        return items
+
+    def generate_task(self):
+        # 随机生成任务
+        item = random.choice(self.items)
+        count = random.randint(1, 5)
+        return item, count
+
+    def draw_task(self):
+        # 绘制任务提示
+        task_text = f"{self.current_task.name} × {self.current_task_count}"
+        task_font = pygame.font.SysFont('simhei', 20)
+        task_surface = task_font.render(task_text, True, (255, 255, 255))
+        self.screen.blit(task_surface, (580, 10))
+
+    def draw_score(self):
+        # 绘制积分
+        score_text = f"得分：{self.score}"
+        score_font = pygame.font.SysFont('simhei', 20)
+        score_surface = score_font.render(score_text, True, (255, 255, 255))
+        self.screen.blit(score_surface, (580, 35))
+
+    def handle_click(self, mouse_pos):
+        if not self.game_over:
+            # 获得背景偏移量
+            offset_x = self.game_background.position[0]
+            # 将鼠标位置转换到背景的坐标系中
+            adjusted_mouse_pos = (mouse_pos[0] - offset_x, mouse_pos[1])
+            # 遍历网格中的图片，检查调整后的鼠标位置是否在图片矩形内
+            for row in range(self.game_grid.grid_size[0]):
+                for col in range(self.game_grid.grid_size[1]):
+                    image = self.game_grid.grid[row][col]
+                    if image:
+                        image_rect = image.get_rect(
+                            topleft=(col * (self.game_grid.cell_width + self.game_grid.horizontal_padding) + 25,
+                                     row * (self.game_grid.cell_height + self.game_grid.vertical_padding) + 60)
+                        )
+                        if image_rect.collidepoint(adjusted_mouse_pos):
+                            if image in self.current_task.images:
+                                self.generate_new_image(row, col)
+                                self.current_task_count -= 1
+                                self.score += 10
+                                if self.current_task_count <= 0:
+                                    self.current_task, self.current_task_count = self.generate_task()
+                                return
+
+    def generate_new_image(self, row, col):
+        # 随机生成新的图片
+        item = random.choice(self.items)
+        new_image = random.choice(item.images)
+        self.game_grid.grid[row][col] = new_image
+
+    def reset_game(self):
+        # 重置游戏状态
+        self.game_over = False
+        self.score = 0
+        self.current_task, self.current_task_count = self.generate_task()
+        self.game_grid.grid = self.game_grid.create_grid()
+        self.timer = Timer(120)
 
     def run(self):
         while self.running:
@@ -212,11 +286,16 @@ class Game:
                         self.running = False
                     self.game_background.handle_events(event)
 
+                    # 处理点击事件
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        if event.button == 1:
+                            self.handle_click(event.pos)
+
                     # 处理游戏结束弹窗的点击事件
                     if self.game_over and event.type == pygame.MOUSEBUTTONDOWN:
                         if event.button == 1:
                             self.start_page_active = True
-                            self.game_over = False
+                            self.reset_game()
 
                 # 倒计时
                 if not self.game_over:
@@ -231,13 +310,17 @@ class Game:
                     # 检查倒计时是否结束
                     if self.timer.is_finished():
                         self.game_over = True
+                        self.popup.update_score(self.score)  # 更新弹窗的积分
 
+                # 绘制任务提示
+                self.draw_task()
+                # 绘制积分
+                self.draw_score()
+                # 绘制游戏网格
+                self.game_grid.draw(self.game_background.position[0])
                 # 绘制游戏结束弹窗
                 if self.game_over:
                     self.popup.draw()
-
-                # 绘制游戏网格
-                self.game_grid.draw(self.game_background.position[0])
 
             # 更新屏幕
             pygame.display.flip()
