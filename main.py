@@ -41,40 +41,52 @@ class Item:
         self.images = images
 
 class GameGrid:
-    def __init__(self, screen, images, grid_size, cell_width, cell_height, horizontal_padding=10, vertical_padding=10):
+    def __init__(self, screen, images_with_names, grid_size, cell_width, cell_height, horizontal_padding=10, vertical_padding=10):
         self.screen = screen
-        self.images = images
-        self.grid_size = grid_size  # (rows, cols)
-        self.cell_width = cell_width  # 单元格宽度
-        self.cell_height = cell_height  # 单元格高度
-        self.horizontal_padding = horizontal_padding  # 横向间距
-        self.vertical_padding = vertical_padding  # 纵向间距
+        self.images_with_names = images_with_names
+        self.grid_size = grid_size
+        self.cell_width = cell_width
+        self.cell_height = cell_height
+        self.horizontal_padding = horizontal_padding
+        self.vertical_padding = vertical_padding
         self.grid = self.create_grid()
         self.offset_x = 0
 
     def create_grid(self):
         grid = [[None for _ in range(self.grid_size[1])] for _ in range(self.grid_size[0])]
+        random.shuffle(self.images_with_names)
         image_index = 0
         for row in range(self.grid_size[0]):
             for col in range(self.grid_size[1]):
-                if image_index < len(self.images):
-                    grid[row][col] = self.images[image_index]
+                if image_index < len(self.images_with_names):
+                    grid[row][col] = self.images_with_names[image_index]
                     image_index += 1
         return grid
+
+    def count_items(self):
+        item_counts = {}
+        for row in self.grid:
+            for image, item_name in row:
+                if item_name in item_counts:
+                    item_counts[item_name] += 1
+                else:
+                    item_counts[item_name] = 1
+        return item_counts
 
     def draw(self, offset_x):
         self.offset_x = -offset_x
         for row in range(self.grid_size[0]):
             for col in range(self.grid_size[1]):
-                image = self.grid[row][col]
-                if image:
-                    image_rect = image.get_rect(
+                image_tuple = self.grid[row][col]
+                if image_tuple:
+                    image_surface, item_name = image_tuple
+                    image_rect = image_surface.get_rect(
                         topleft=(
                             col * (self.cell_width + self.horizontal_padding) - self.offset_x + 25,
                             row * (self.cell_height + self.vertical_padding) + 60
                         )
                     )
-                    self.screen.blit(image, image_rect)
+                    self.screen.blit(image_surface, image_rect)
 
 class GameBackground:
     def __init__(self, screen, background_image):
@@ -178,10 +190,10 @@ class Game:
 
         # 初始化物品
         self.items = self.load_images()
-        # 创建一个所有图片的平铺列表
-        self.all_images = [image for item in self.items for image in item.images]
+        # 创建一个所有图片的平铺列表，包含图片和物品名称
+        self.all_images_with_names = [(image, item.name) for item in self.items for image in item.images]
         # 初始化游戏网格
-        self.game_grid = GameGrid(self.screen, self.all_images, (4, 12), cell_width=130, cell_height=130,
+        self.game_grid = GameGrid(self.screen, self.all_images_with_names, (4, 12), cell_width=130, cell_height=130,
                                   horizontal_padding=40, vertical_padding=20)
 
         # 主循环控制变量
@@ -198,11 +210,88 @@ class Game:
     def load_images(self):
         # 加载物品图片
         item_images = {
+            '包子': [pygame.image.load(f'img/test/baozi ({i}).png') for i in range(1, 3)],
+            '笔': [pygame.image.load(f'img/test/bi ({i}).png') for i in range(1, 6)],
+            '布艺沙发': [pygame.image.load(f'img/test/buyishafa ({i}).png') for i in range(1, 2)],
+            '博古架': [pygame.image.load(f'img/test/bogujia ({i}).png') for i in range(1, 5)],
+            '车': [pygame.image.load(f'img/test/che ({i}).png') for i in range(1, 3)],
+            '床': [pygame.image.load(f'img/test/chuang ({i}).png') for i in range(1, 5)],
+            '窗棂': [pygame.image.load(f'img/test/chuangling ({i}).png') for i in range(1, 4)],
+            '刀剑': [pygame.image.load(f'img/test/daojian ({i}).png') for i in range(1, 3)],
+            '凳子': [pygame.image.load(f'img/test/dengzi ({i}).png') for i in range(1, 4)],
+            '吊坠': [pygame.image.load(f'img/test/diaozhui ({i}).png') for i in range(1, 3)],
+            '地毯': [pygame.image.load(f'img/test/ditan ({i}).png') for i in range(1, 4)],
+            '地图': [pygame.image.load(f'img/test/ditu ({i}).png') for i in range(1, 3)],
             '风筝': [pygame.image.load(f'img/test/fengzheng ({i}).png') for i in range(1, 5)],
-            '勺子': [pygame.image.load(f'img/test/shaozi ({i}).png') for i in range(1, 38)],
-            '筷子': [pygame.image.load(f'img/test/kuaizi ({i}).png') for i in range(1, 12)],
-            '花瓶': [pygame.image.load(f'img/test/huapin ({i}).png') for i in range(1, 15)],
-            # 添加更多物品
+            '福袋': [pygame.image.load(f'img/test/fudai ({i}).png') for i in range(1, 5)],
+            '鼓': [pygame.image.load(f'img/test/gu ({i}).png') for i in range(1, 4)],
+            '柜子': [pygame.image.load(f'img/test/guizi ({i}).png') for i in range(1, 3)],
+            '锅灶': [pygame.image.load(f'img/test/guozao ({i}).png') for i in range(1, 5)],
+            '荷花灯': [pygame.image.load(f'img/test/hehuadeng ({i}).png') for i in range(1, 4)],
+            '花': [pygame.image.load(f'img/test/hua ({i}).png') for i in range(1, 8)],
+            '花架子': [pygame.image.load(f'img/test/huajiazi ({i}).png') for i in range(1, 2)],
+            '花瓶': [pygame.image.load(f'img/test/huaping ({i}).png') for i in range(1, 7)],
+            '话筒': [pygame.image.load(f'img/test/huatong ({i}).png') for i in range(1, 2)],
+            '徽章': [pygame.image.load(f'img/test/huizhang ({i}).png') for i in range(1, 9)],
+            '货币': [pygame.image.load(f'img/test/huobi ({i}).png') for i in range(1, 4)],
+            '火锅': [pygame.image.load(f'img/test/huoguo ({i}).png') for i in range(1, 3)],
+            '坚果': [pygame.image.load(f'img/test/jianguo ({i}).png') for i in range(1, 11)],
+            '箭筒': [pygame.image.load(f'img/test/jiantong ({i}).png') for i in range(1, 5)],
+            '轿辇': [pygame.image.load(f'img/test/jiaonian ({i}).png') for i in range(1, 2)],
+            '戒指': [pygame.image.load(f'img/test/jiezhi ({i}).png') for i in range(1, 2)],
+            '镜子': [pygame.image.load(f'img/test/jingzi ({i}).png') for i in range(1, 3)],
+            '锦囊': [pygame.image.load(f'img/test/jinnang ({i}).png') for i in range(1, 5)],
+            '酒': [pygame.image.load(f'img/test/jiu ({i}).png') for i in range(1, 6)],
+            '酒杯': [pygame.image.load(f'img/test/jiubei ({i}).png') for i in range(1, 9)],
+            '酒壶': [pygame.image.load(f'img/test/jiuhu ({i}).png') for i in range(1, 4)],
+            '卷轴': [pygame.image.load(f'img/test/juanzhou ({i}).png') for i in range(1, 5)],
+            '筷子': [pygame.image.load(f'img/test/kuaizi ({i}).png') for i in range(1, 8)],
+            '令牌': [pygame.image.load(f'img/test/lingpai ({i}).png') for i in range(1, 3)],
+            '马': [pygame.image.load(f'img/test/ma ({i}).png') for i in range(1, 3)],
+            '猫': [pygame.image.load(f'img/test/mao ({i}).png') for i in range(1, 6)],
+            '门票': [pygame.image.load(f'img/test/menpiao ({i}).png') for i in range(1, 6)],
+            '墨块': [pygame.image.load(f'img/test/mokuai ({i}).png') for i in range(1, 2)],
+            '木盒': [pygame.image.load(f'img/test/muhe ({i}).png') for i in range(1, 5)],
+            '木椅': [pygame.image.load(f'img/test/muyi ({i}).png') for i in range(1, 5)],
+            '木桌': [pygame.image.load(f'img/test/muzhuo ({i}).png') for i in range(1, 4)],
+            '鸟': [pygame.image.load(f'img/test/niao ({i}).png') for i in range(1, 8)],
+            '盆栽': [pygame.image.load(f'img/test/penzai ({i}).png') for i in range(1, 6)],
+            '屏风': [pygame.image.load(f'img/test/pingfeng ({i}).png') for i in range(1, 6)],
+            '桥': [pygame.image.load(f'img/test/qiao ({i}).png') for i in range(1, 3)],
+            '琴': [pygame.image.load(f'img/test/qin ({i}).png') for i in range(1, 8)],
+            '棋盘': [pygame.image.load(f'img/test/qipan ({i}).png') for i in range(1, 3)],
+            '棋子': [pygame.image.load(f'img/test/qizi ({i}).png') for i in range(1, 3)],
+            '伞': [pygame.image.load(f'img/test/san ({i}).png') for i in range(1, 2)],
+            '珊瑚': [pygame.image.load(f'img/test/shanhu ({i}).png') for i in range(1, 3)],
+            '扇子': [pygame.image.load(f'img/test/shanzi ({i}).png') for i in range(1, 3)],
+            '勺子': [pygame.image.load(f'img/test/shaozi ({i}).png') for i in range(1, 14)],
+            '食盒': [pygame.image.load(f'img/test/shihe ({i}).png') for i in range(1, 5)],
+            '手环': [pygame.image.load(f'img/test/shouhuan ({i}).png') for i in range(1, 2)],
+            '首饰': [pygame.image.load(f'img/test/shoushi ({i}).png') for i in range(1, 7)],
+            '树': [pygame.image.load(f'img/test/shu ({i}).png') for i in range(1, 4)],
+            '书本': [pygame.image.load(f'img/test/shuben ({i}).png') for i in range(1, 7)],
+            '梳子': [pygame.image.load(f'img/test/shuzi ({i}).png') for i in range(1, 4)],
+            '躺椅': [pygame.image.load(f'img/test/tangyi ({i}).png') for i in range(1, 5)],
+            '天鹅': [pygame.image.load(f'img/test/tiane ({i}).png') for i in range(1, 5)],
+            '调料': [pygame.image.load(f'img/test/tiaoliao ({i}).png') for i in range(1, 2)],
+            '提灯': [pygame.image.load(f'img/test/tideng ({i}).png') for i in range(1, 4)],
+            '碗': [pygame.image.load(f'img/test/wan ({i}).png') for i in range(1, 5)],
+            '香炉': [pygame.image.load(f'img/test/xianglu ({i}).png') for i in range(1, 4)],
+            '鞋': [pygame.image.load(f'img/test/xie ({i}).png') for i in range(1, 3)],
+            '砚台': [pygame.image.load(f'img/test/yantai ({i}).png') for i in range(1, 3)],
+            '药': [pygame.image.load(f'img/test/yao ({i}).png') for i in range(1, 2)],
+            '药材': [pygame.image.load(f'img/test/yaocai ({i}).png') for i in range(1, 6)],
+            '邀请函': [pygame.image.load(f'img/test/yaoqinghan ({i}).png') for i in range(1, 6)],
+            '衣服': [pygame.image.load(f'img/test/yifu ({i}).png') for i in range(1, 3)],
+            '印章': [pygame.image.load(f'img/test/yinzhang ({i}).png') for i in range(1, 2)],
+            '衣物架': [pygame.image.load(f'img/test/yiwujia ({i}).png') for i in range(1, 4)],
+            '鱼': [pygame.image.load(f'img/test/yu ({i}).png') for i in range(1, 8)],
+            '浴池子': [pygame.image.load(f'img/test/yuchizi ({i}).png') for i in range(1, 9)],
+            '月饼': [pygame.image.load(f'img/test/yuebing ({i}).png') for i in range(1, 5)],
+            '针线': [pygame.image.load(f'img/test/zhenxian ({i}).png') for i in range(1, 3)],
+            '镇纸': [pygame.image.load(f'img/test/zhenzhi ({i}).png') for i in range(1, 3)],
+            '字画': [pygame.image.load(f'img/test/zihua ({i}).png') for i in range(1, 3)],
+            '坐垫': [pygame.image.load(f'img/test/zuodian ({i}).png') for i in range(1, 6)]
         }
         items = []
         for name, image_list in item_images.items():
@@ -212,20 +301,26 @@ class Game:
         return items
 
     def generate_task(self):
-        # 随机生成任务
-        item = random.choice(self.items)
-        count = random.randint(1, 5)
-        return item, count
+        item_counts = self.game_grid.count_items()
+        items_in_grid = list(item_counts.keys())
+        selected_item_name = random.choice(items_in_grid)
+        selected_item = self.get_item_by_name(selected_item_name)
+        count = random.randint(1, item_counts[selected_item_name])
+        return selected_item, count
+
+    def get_item_by_name(self, name):
+        for item in self.items:
+            if item.name == name:
+                return item
+        return None
 
     def draw_task(self):
-        # 绘制任务提示
         task_text = f"{self.current_task.name} × {self.current_task_count}"
         task_font = pygame.font.SysFont('simhei', 20)
         task_surface = task_font.render(task_text, True, (255, 255, 255))
         self.screen.blit(task_surface, (580, 10))
 
     def draw_score(self):
-        # 绘制积分
         score_text = f"得分：{self.score}"
         score_font = pygame.font.SysFont('simhei', 20)
         score_surface = score_font.render(score_text, True, (255, 255, 255))
@@ -233,21 +328,19 @@ class Game:
 
     def handle_click(self, mouse_pos):
         if not self.game_over:
-            # 获得背景偏移量
             offset_x = self.game_background.position[0]
-            # 将鼠标位置转换到背景的坐标系中
             adjusted_mouse_pos = (mouse_pos[0] - offset_x, mouse_pos[1])
-            # 遍历网格中的图片，检查调整后的鼠标位置是否在图片矩形内
             for row in range(self.game_grid.grid_size[0]):
                 for col in range(self.game_grid.grid_size[1]):
-                    image = self.game_grid.grid[row][col]
-                    if image:
-                        image_rect = image.get_rect(
+                    image_tuple = self.game_grid.grid[row][col]
+                    if image_tuple:
+                        image_surface, item_name = image_tuple
+                        image_rect = image_surface.get_rect(
                             topleft=(col * (self.game_grid.cell_width + self.game_grid.horizontal_padding) + 25,
                                      row * (self.game_grid.cell_height + self.game_grid.vertical_padding) + 60)
                         )
                         if image_rect.collidepoint(adjusted_mouse_pos):
-                            if image in self.current_task.images:
+                            if item_name == self.current_task.name:
                                 self.generate_new_image(row, col)
                                 self.current_task_count -= 1
                                 self.score += 10
@@ -256,13 +349,11 @@ class Game:
                                 return
 
     def generate_new_image(self, row, col):
-        # 随机生成新的图片
-        item = random.choice(self.items)
-        new_image = random.choice(item.images)
-        self.game_grid.grid[row][col] = new_image
+        selected_item = random.choice(self.items)
+        new_image = random.choice(selected_item.images)
+        self.game_grid.grid[row][col] = (new_image, selected_item.name)
 
     def reset_game(self):
-        # 重置游戏状态
         self.game_over = False
         self.score = 0
         self.current_task, self.current_task_count = self.generate_task()
@@ -286,18 +377,15 @@ class Game:
                         self.running = False
                     self.game_background.handle_events(event)
 
-                    # 处理点击事件
                     if event.type == pygame.MOUSEBUTTONDOWN:
                         if event.button == 1:
                             self.handle_click(event.pos)
 
-                    # 处理游戏结束弹窗的点击事件
                     if self.game_over and event.type == pygame.MOUSEBUTTONDOWN:
                         if event.button == 1:
                             self.start_page_active = True
                             self.reset_game()
 
-                # 倒计时
                 if not self.game_over:
                     remaining_time = self.timer.get_remaining_time()
                     minutes = int(remaining_time // 60)
@@ -307,22 +395,16 @@ class Game:
                     time_surface = time_font.render(time_text, True, (255, 255, 255))
                     self.screen.blit(time_surface, (self.screen_width - 100, 10))
 
-                    # 检查倒计时是否结束
                     if self.timer.is_finished():
                         self.game_over = True
-                        self.popup.update_score(self.score)  # 更新弹窗的积分
+                        self.popup.update_score(self.score)
 
-                # 绘制任务提示
                 self.draw_task()
-                # 绘制积分
                 self.draw_score()
-                # 绘制游戏网格
                 self.game_grid.draw(self.game_background.position[0])
-                # 绘制游戏结束弹窗
                 if self.game_over:
                     self.popup.draw()
 
-            # 更新屏幕
             pygame.display.flip()
 
 # 创建游戏对象并运行
