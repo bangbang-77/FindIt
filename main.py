@@ -186,7 +186,9 @@ class Game:
         self.popup = Popup(self.screen, 300, 200, "游戏结束")
 
         # 初始化计时器
-        self.timer = Timer(10)  # 设置倒计时为120秒
+        self.timer_duration = 120  # 基础倒计时
+        self.timer_extra = 0  # 额外增加或减少的时间
+        self.start_time = time.time()  # 设置倒计时为120秒
 
         # 初始化物品
         self.items = self.load_images()
@@ -302,7 +304,9 @@ class Game:
 
     def generate_task(self):
         item_counts = self.game_grid.count_items()
-        items_in_grid = list(item_counts.keys())
+        items_in_grid = [item for item, count in item_counts.items() if count > 0]
+        if not items_in_grid:
+            return None, 0
         selected_item_name = random.choice(items_in_grid)
         selected_item = self.get_item_by_name(selected_item_name)
         count = random.randint(1, item_counts[selected_item_name])
@@ -316,9 +320,12 @@ class Game:
 
     def draw_task(self):
         task_text = f"{self.current_task.name} × {self.current_task_count}"
-        task_font = pygame.font.SysFont('simhei', 20)
-        task_surface = task_font.render(task_text, True, (255, 255, 255))
+        tip_text = "可左右拖动"
+        t_font = pygame.font.SysFont('simhei', 20)
+        task_surface = t_font.render(task_text, True, (255, 255, 255))
+        tip_surface = t_font.render(tip_text, True, (255, 255, 255))
         self.screen.blit(task_surface, (580, 10))
+        self.screen.blit(tip_surface,(580,680))
 
     def draw_score(self):
         score_text = f"得分：{self.score}"
@@ -344,8 +351,12 @@ class Game:
                                 self.generate_new_image(row, col)
                                 self.current_task_count -= 1
                                 self.score += 10
+                                self.timer_extra += 1  # 增加1秒
                                 if self.current_task_count <= 0:
                                     self.current_task, self.current_task_count = self.generate_task()
+                                return
+                            else:
+                                self.timer_extra -= 1  # 减少1秒
                                 return
 
     def generate_new_image(self, row, col):
@@ -353,12 +364,29 @@ class Game:
         new_image = random.choice(selected_item.images)
         self.game_grid.grid[row][col] = (new_image, selected_item.name)
 
+    def update_timer(self):
+        elapsed_time = time.time() - self.start_time
+        remaining_time = self.timer_duration + self.timer_extra - elapsed_time
+        if remaining_time <= 0:
+            self.game_over = True
+            self.popup.update_score(self.score)
+        else:
+            minutes = int(remaining_time // 60)
+            seconds = int(remaining_time % 60)
+            time_text = f"{minutes:02}:{seconds:02}"
+            time_font = pygame.font.Font(None, 36)
+            time_surface = time_font.render(time_text, True, (255, 255, 255))
+            self.screen.blit(time_surface, (self.screen_width - 100, 10))
+
     def reset_game(self):
         self.game_over = False
         self.score = 0
-        self.current_task, self.current_task_count = self.generate_task()
-        self.game_grid.grid = self.game_grid.create_grid()
-        self.timer = Timer(120)
+        self.game_grid.grid = self.game_grid.create_grid()  # 重新生成网格
+        self.current_task, self.current_task_count = self.generate_task()  # 生成新任务
+        self.timer_duration = 120
+        self.timer_extra = 0
+        self.start_time = time.time()
+        self.popup = Popup(self.screen, 300, 200, "游戏结束")
 
     def run(self):
         while self.running:
@@ -369,7 +397,7 @@ class Game:
                         self.running = False
                     elif self.start_page.handle_events(event):
                         self.start_page_active = False
-                        self.timer.start_time = time.time()
+                        # self.timer.start_time = time.time()
             else:
                 self.game_background.draw()
                 for event in pygame.event.get():
@@ -387,17 +415,7 @@ class Game:
                             self.reset_game()
 
                 if not self.game_over:
-                    remaining_time = self.timer.get_remaining_time()
-                    minutes = int(remaining_time // 60)
-                    seconds = int(remaining_time % 60)
-                    time_text = f"{minutes:02}:{seconds:02}"
-                    time_font = pygame.font.Font(None, 36)
-                    time_surface = time_font.render(time_text, True, (255, 255, 255))
-                    self.screen.blit(time_surface, (self.screen_width - 100, 10))
-
-                    if self.timer.is_finished():
-                        self.game_over = True
-                        self.popup.update_score(self.score)
+                    self.update_timer()
 
                 self.draw_task()
                 self.draw_score()
