@@ -20,13 +20,34 @@ class Button:
         return math.sqrt((mouse_x - self.position[0]) ** 2 + (mouse_y - self.position[1]) ** 2) <= self.radius
 
 class StartPage:
-    def __init__(self, screen, background_image, button):
+    def __init__(self, screen, background_image, button, last_score=0):
         self.screen = screen
         self.background_image = background_image
         self.button = button
+        self.last_score = last_score
+        self.rule_image = pygame.image.load('img/museumgamemainview.png')
 
     def draw(self):
+        font = pygame.font.SysFont('simhei', 20)
+        rule_text = "找到指定物品，越多得分越高"
+        rule_surface = font.render(rule_text, True, ('#05668D'))
+        example_text = "例如  勺子 × 2"
+        example_surface = font.render(example_text, True, ('#05668D'))
+        extra_rule_text1 = "规定时间内找到指定的物品越多，积分越高。"
+        extra_rule_text2 = "提示：找到正确物品可加时，找到错误物品则会扣时哦。"
+        extra_rule_surface1 = font.render(extra_rule_text1, True, (255,255,255))
+        extra_rule_surface2 = font.render(extra_rule_text2, True, (255,255,255))
+        last_score_text = f"上局得分：{self.last_score}"
+        last_score_surface = font.render(last_score_text, True, (255, 255, 255))
+
+        rule_image_rect = self.rule_image.get_rect(center=(self.screen.get_width() // 2, self.screen.get_height() // 2))
         self.screen.blit(self.background_image, (self.screen.get_width() - self.background_image.get_width(), 0))
+        self.screen.blit(self.rule_image, rule_image_rect)
+        self.screen.blit(rule_surface, (500, 210))
+        self.screen.blit(example_surface, (550, 250))
+        self.screen.blit(extra_rule_surface1, (10, 650))
+        self.screen.blit(extra_rule_surface2, (10, 680))
+        self.screen.blit(last_score_surface, (50, 50))
         self.button.draw(self.screen)
 
     def handle_events(self, event):
@@ -177,9 +198,11 @@ class Game:
 
         # 加载游戏背景图像
         self.background_gameimage = pygame.image.load('img/bg_game.png')
-
+        # 初始化积分
+        self.last_score = 0
+        self.score = 0
         # 初始化页面和背景
-        self.start_page = StartPage(self.screen, self.background_startimage, self.button)
+        self.start_page = StartPage(self.screen, self.background_startimage, self.button, self.last_score)
         self.game_background = GameBackground(self.screen, self.background_gameimage)
 
         # 初始化弹窗
@@ -188,7 +211,7 @@ class Game:
         # 初始化计时器
         self.timer_duration = 120  # 基础倒计时
         self.timer_extra = 0  # 额外增加或减少的时间
-        self.start_time = time.time()  # 设置倒计时为120秒
+        self.start_time = None  # 设置倒计时为120秒
 
         # 初始化物品
         self.items = self.load_images()
@@ -206,8 +229,7 @@ class Game:
         # 初始化任务
         self.current_task, self.current_task_count = self.generate_task()
 
-        # 初始化积分
-        self.score = 0
+
 
     def load_images(self):
         # 加载物品图片
@@ -365,22 +387,25 @@ class Game:
         self.game_grid.grid[row][col] = (new_image, selected_item.name)
 
     def update_timer(self):
-        elapsed_time = time.time() - self.start_time
-        remaining_time = self.timer_duration + self.timer_extra - elapsed_time
-        if remaining_time <= 0:
-            self.game_over = True
-            self.popup.update_score(self.score)
-        else:
-            minutes = int(remaining_time // 60)
-            seconds = int(remaining_time % 60)
-            time_text = f"{minutes:02}:{seconds:02}"
-            time_font = pygame.font.Font(None, 36)
-            time_surface = time_font.render(time_text, True, (255, 255, 255))
-            self.screen.blit(time_surface, (self.screen_width - 100, 10))
+        if self.start_time is not None:
+            elapsed_time = time.time() - self.start_time
+            remaining_time = self.timer_duration + self.timer_extra - elapsed_time
+            if remaining_time <= 0:
+                self.game_over = True
+                self.popup.update_score(self.score)
+            else:
+                minutes = int(remaining_time // 60)
+                seconds = int(remaining_time % 60)
+                time_text = f"{minutes:02}:{seconds:02}"
+                time_font = pygame.font.Font(None, 36)
+                time_surface = time_font.render(time_text, True, (255, 255, 255))
+                self.screen.blit(time_surface, (self.screen_width - 100, 10))
 
     def reset_game(self):
+        self.last_score = self.score  # 保存上一局的积分
         self.game_over = False
-        self.score = 0
+
+        self.score = 0  # 重置当前积分
         self.game_grid.grid = self.game_grid.create_grid()  # 重新生成网格
         self.current_task, self.current_task_count = self.generate_task()  # 生成新任务
         self.timer_duration = 120
@@ -391,13 +416,14 @@ class Game:
     def run(self):
         while self.running:
             if self.start_page_active:
+                self.start_page = StartPage(self.screen, self.background_startimage, self.button, self.last_score)
                 self.start_page.draw()
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         self.running = False
                     elif self.start_page.handle_events(event):
                         self.start_page_active = False
-                        # self.timer.start_time = time.time()
+                        self.reset_game()
             else:
                 self.game_background.draw()
                 for event in pygame.event.get():
