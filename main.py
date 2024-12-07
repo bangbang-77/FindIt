@@ -7,17 +7,16 @@ import random
 pygame.init()
 
 class Button:
-    def __init__(self, color, position, radius):
-        self.color = color
+    def __init__(self, image_path, position):
+        self.image = pygame.image.load(image_path)
         self.position = position
-        self.radius = radius
+        self.rect = self.image.get_rect(center=self.position)
 
     def draw(self, screen):
-        pygame.draw.circle(screen, self.color, self.position, self.radius)
+        screen.blit(self.image, self.rect)
 
     def is_clicked(self, mouse_pos):
-        mouse_x, mouse_y = mouse_pos
-        return math.sqrt((mouse_x - self.position[0]) ** 2 + (mouse_y - self.position[1]) ** 2) <= self.radius
+        return self.rect.collidepoint(mouse_pos)
 
 class StartPage:
     def __init__(self, screen, background_image, button, last_score=0):
@@ -47,7 +46,7 @@ class StartPage:
         self.screen.blit(example_surface, (550, 250))
         self.screen.blit(extra_rule_surface1, (10, 650))
         self.screen.blit(extra_rule_surface2, (10, 680))
-        self.screen.blit(last_score_surface, (50, 50))
+        self.screen.blit(last_score_surface, (580, 30))
         self.button.draw(self.screen)
 
     def handle_events(self, event):
@@ -191,10 +190,8 @@ class Game:
         self.background_startimage = pygame.image.load('img/bg_game.png')
 
         # 设置跳转按钮
-        self.button_color = (0, 255, 0)
-        self.button_radius = 50
-        self.button_position = (self.screen_width - self.button_radius - 20, self.screen_height - self.button_radius - 20)
-        self.button = Button(self.button_color, self.button_position, self.button_radius)
+        self.button_position = (self.screen_width - 70, self.screen_height - 70)
+        self.button = Button('img/start_button.png', self.button_position)
 
         # 加载游戏背景图像
         self.background_gameimage = pygame.image.load('img/bg_game.png')
@@ -228,8 +225,6 @@ class Game:
 
         # 初始化任务
         self.current_task, self.current_task_count = self.generate_task()
-
-
 
     def load_images(self):
         # 加载物品图片
@@ -301,7 +296,7 @@ class Game:
             '提灯': [pygame.image.load(f'img/test/tideng ({i}).png') for i in range(1, 4)],
             '碗': [pygame.image.load(f'img/test/wan ({i}).png') for i in range(1, 5)],
             '香炉': [pygame.image.load(f'img/test/xianglu ({i}).png') for i in range(1, 4)],
-            '鞋': [pygame.image.load(f'img/test/xie ({i}).png') for i in range(1, 3)],
+            '鞋': [pygame.image.load(f'img/test/xie ({i}).png') for i in range(1, 2)],
             '砚台': [pygame.image.load(f'img/test/yantai ({i}).png') for i in range(1, 3)],
             '药': [pygame.image.load(f'img/test/yao ({i}).png') for i in range(1, 2)],
             '药材': [pygame.image.load(f'img/test/yaocai ({i}).png') for i in range(1, 6)],
